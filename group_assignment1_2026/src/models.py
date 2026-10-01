@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 import scipy.linalg
 from senfuslib import MultiVarGauss, DynamicModel
+from senfuslib import NamedArray, AtIndex
 from states import (ErrorState, ImuMeasurement,
                     CorrectedImuMeasurement, NominalState,
                     GnssMeasurement, EskfState)
@@ -63,13 +64,11 @@ class ModelIMU:
         Returns:
             z_corr: corrected IMU measurement
         """
-
         
-        acc_est = np.zeros(3)
-        avel_est = np.zeros(3)
-
-        # TODO remove this
-        z_corr = models_solu.ModelIMU.correct_z_imu(self, x_est_nom, z_imu)
+        acc_est = self.accm_correction @ ( z_imu.acc - x_est_nom.accm_bias) 
+        avel_est = self.gyro_correction @ (z_imu.avel - x_est_nom.gyro_bias)
+        z_corr = CorrectedImuMeasurement(acc = acc_est, avel=avel_est)
+        
         return z_corr
 
     def predict_nom(self,
@@ -91,18 +90,15 @@ class ModelIMU:
         Returns:
             x_nom_pred: predicted nominal state
         """
-        pos_pred = np.zeros(3)  # TODO
-        vel_pred = np.zeros(3)  # TODO
+        pos_pred = x_est_nom.pos + x_est_nom.vel * dt + z_corr.acc * (dt ** 2) / 2
+        vel_pred = x_est_nom.vel + dt * z_corr.acc 
 
-        delta_rot = RotationQuaterion(1, np.zeros(3))  # TODO
-        ori_pred = np.zeros(3)  # TODO
+        delta_rot = dt * z_corr.avel
+        ori_pred = x_est_nom.ori.multiply(RotationQuaterion.from_avec(delta_rot))
 
-        acc_bias_pred = np.zeros(3)  # TODO
-        gyro_bias_pred = np.zeros(3)  # TODO
+        acc_bias_pred = x_est_nom.accm_bias 
+        gyro_bias_pred = x_est_nom.gyro_bias        
 
-        # TODO remove this
-        x_nom_pred = models_solu.ModelIMU.predict_nom(
-            self, x_est_nom, z_corr, dt)
         return x_nom_pred
 
     def A_c(self,
