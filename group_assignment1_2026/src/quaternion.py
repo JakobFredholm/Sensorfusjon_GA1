@@ -42,7 +42,9 @@ class RotationQuaterion(NamedArray):
         """
         eta_a, epsilon_a = self
         eta_b, epsilon_b = other
-        eta_out = 1  # TODO
+        eta_a = eta_a[0]
+        eta_b = eta_b[0]
+        eta_out = eta_a * eta_b - np.dot(epsilon_a, epsilon_b)
         epout = np.zeros(3)  # TODO
 
         # TODO remove this
