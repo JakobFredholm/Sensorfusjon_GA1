@@ -32,7 +32,7 @@ class SensorGNSS:
         """
 
 
-        R = x_nom.euler()
+        R = x_nom.ori.R
         H = np.zeros((3, 15))
         
         H[:, 0:3] = np.eye(3)                              
@@ -53,10 +53,10 @@ class SensorGNSS:
         """
         x_est_nom = x_est.nom
         x_est_err = x_est.err
-        Ro =x_est_nom.euler()
+        Ro = x_est_nom.ori.R
         z_pred = x_est_nom.pos+ Ro@self.lever_arm  # TODO
         H = self.H(x_est_nom)
-        S = H@x_est_err@H.T+self.R # TODO
+        S = H@x_est_err.cov@H.T+self.R # TODO
 
         z_pred = GnssMeasurement.from_array(z_pred)
         z_gnss_pred_gauss = MultiVarGauss[GnssMeasurement](z_pred, S)
