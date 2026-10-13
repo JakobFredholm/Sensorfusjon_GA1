@@ -39,12 +39,12 @@ class ESKF():
         if dt == 0:
 
             # TODO remove this
-            x_est_prev = eskf_solu.ESKF.predict_from_imu(
-                self, x_est_prev, z_imu, dt)
+            #x_est_prev = eskf_solu.ESKF.predict_from_imu(
+             #   self, x_est_prev, z_imu, dt)
             return x_est_prev
 
         x_est_prev_nom = x_est_prev.nom
-        z_corr = None  # TODO
+        z_corr = self.model.correct_z_imu(x_est_prev_nom,z_imu) # TODO
         x_est_pred_nom = None  # TODO
         x_est_pred_err = None  # TODO
 
@@ -117,21 +117,24 @@ class ESKF():
         Returns:
             x_est_inj: eskf state after injection
         """
-        pos_inj = np.zeros(3)
-        vel_inj = np.zeros(3)
-        ori_inj = RotationQuaterion(1, np.zeros(3))
-        accm_bias_inj = np.zeros(3)
-        gyro_bias_inj = np.zeros(3)
+        delta_x = x_est_err.mean
+
+        pos_inj = x_est_nom.pos() + delta_x[0:3]
+        vel_inj = x_est_nom.vel() + delta_x[3:6]
+        ori_inj =  x_est_nom.ori().multiply( RotationQuaterion(1, 0.5 * delta_x[6:9]))
+        accm_bias_inj = x_est_nom.accm_bias() + delta_x[9:12]
+        gyro_bias_inj =x_est_nom.gyro_bias() + delta_x[12:15]
 
         x_nom_inj = NominalState(pos_inj, vel_inj, ori_inj,
                                  accm_bias_inj, gyro_bias_inj)
-
-        P_inj = np.eye(15)
+        G = np.eye(15)
+        G[6:9, 6:9] = np.eye(3) - get_cross_matrix(0.5 * delta_x[6:9])
+        P_inj = G @ x_est_err.cov @ G.T
         x_err_inj = MultiVarGauss[ErrorState](np.zeros(15), P_inj)
         x_est_inj = EskfState(x_nom_inj, x_err_inj)
 
         # TODO remove this
-        x_est_inj = eskf_solu.ESKF.inject(self, x_est_nom, x_est_err)
+        #x_est_inj = eskf_solu.ESKF.inject(self, x_est_nom, x_est_err)
         return x_est_inj
 
     def update_from_gnss(self,
@@ -152,12 +155,14 @@ class ESKF():
             z_est_upd: predicted measurement gaussian
 
         """
-        z_est_pred = None  # TODO
-        x_est_upd_err = None  # TODO
-        x_est_upd = None  # TODO
+       
+
+        z_est_pred = self.sensor.pred_from_est(x_est_pred) # TODO
+        x_est_upd_err = self.update_err_from_gnss(x_est_pred, z_est_pred, z_gnss)  # TODO
+        x_est_upd = self.inject(x_est_pred.nom, x_est_upd_err)  # TODO
 
         # TODO remove this
-        x_est_upd, z_est_pred = eskf_solu.ESKF.update_from_gnss(
-            self, x_est_pred, z_gnss)
+        #x_est_upd, z_est_pred = eskf_solu.ESKF.update_from_gnss(
+        #    self, x_est_pred, z_gnss)
 
         return x_est_upd, z_est_pred
