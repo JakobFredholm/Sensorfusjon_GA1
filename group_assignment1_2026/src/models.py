@@ -129,9 +129,13 @@ class ModelIMU:
         Rq = x_est_nom.ori.as_rotmat()
         S_acc = get_cross_matrix(z_corr.acc)
         S_omega = get_cross_matrix(z_corr.avel)
-
-        # TODO remove this
-        A_c = models_solu.ModelIMU.A_c(self, x_est_nom, z_corr)
+        A_c[block_3x3(0,1)] = np.eye(3)
+        A_c[block_3x3(1,2)] = - Rq @ S_acc
+        A_c[block_3x3(1,3)] = - Rq @ self.accm_correction 
+        A_c[block_3x3(2,2)] = - S_omega
+        A_c[block_3x3(2,4)] = - self.gyro_correction
+        A_c[block_3x3(3,3)] = - self.accm_bias_p * np.eye(3) 
+        A_c[block_3x3(4,4)] = - self.gyro_bias_p * np.eye(3)
         return A_c
 
     def get_error_G_c(self,
@@ -149,9 +153,10 @@ class ModelIMU:
         """
         G_c = np.zeros((15, 12))
         Rq = x_est_nom.ori.as_rotmat()
-
-        # TODO remove this
-        G_c = models_solu.ModelIMU.get_error_G_c(self, x_est_nom)
+        G_c[block_3x3(1,0)] = - Rq
+        G_c[block_3x3(2,1)] = - np.eye(3) 
+        G_c[block_3x3(3,2)] =  np.eye(3) 
+        G_c[block_3x3(4,3)] =  np.eye(3) 
 
         return G_c
 
@@ -177,19 +182,16 @@ class ModelIMU:
             A_d (ndarray[15, 15]): discrede transition matrix
             GQGT_d (ndarray[15, 15]): discrete noise covariance matrix
         """
-        A_c = None  # TODO
-        G_c = None  # TODO
-        GQGT_c = None  # TODO
+        A_c = self.A_c(x_est_nom,z_corr) 
+        G_c = self.get_error_G_c(x_est_nom)
+        GQGT_c = G_c @ self.Q_c @ np.linalg.matrix_transpose(G_c)
 
-        exponent = None  # TODO
-        VanLoanMatrix = None  # TODO
+        exponent = np.block([[-A_c, GQGT_c],[np.zeros((15,15)),np.transpose(A_c)]]) 
+        VanLoanMatrix = scipy.linalg.expm(exponent * dt) 
 
-        A_d = None  # TODO
-        GQGT_d = None  # TODO
+        A_d = np.transpose(VanLoanMatrix[15:,15:])
+        GQGT_d = VanLoanMatrix[:15,15:]
 
-        # TODO remove this
-        A_d, GQGT_d = models_solu.ModelIMU.get_discrete_error_diff(
-            self, x_est_nom, z_corr, dt)
 
         return A_d, GQGT_d
 
