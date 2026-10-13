@@ -119,11 +119,11 @@ class ESKF():
         """
         delta_x = x_est_err.mean
 
-        pos_inj = x_est_nom.pos() + delta_x[0:3]
-        vel_inj = x_est_nom.vel() + delta_x[3:6]
-        ori_inj =  x_est_nom.ori().multiply( RotationQuaterion(1, 0.5 * delta_x[6:9]))
-        accm_bias_inj = x_est_nom.accm_bias() + delta_x[9:12]
-        gyro_bias_inj =x_est_nom.gyro_bias() + delta_x[12:15]
+        pos_inj = x_est_nom.pos + delta_x[0:3]
+        vel_inj = x_est_nom.vel + delta_x[3:6]
+        ori_inj =  x_est_nom.ori.multiply( RotationQuaterion(1, 0.5 * delta_x[6:9]))
+        accm_bias_inj = x_est_nom.accm_bias + delta_x[9:12]
+        gyro_bias_inj =x_est_nom.gyro_bias + delta_x[12:15]
 
         x_nom_inj = NominalState(pos_inj, vel_inj, ori_inj,
                                  accm_bias_inj, gyro_bias_inj)

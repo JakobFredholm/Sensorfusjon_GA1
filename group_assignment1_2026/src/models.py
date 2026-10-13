@@ -189,8 +189,8 @@ class ModelIMU:
         exponent = np.block([[-A_c, GQGT_c],[np.zeros((15,15)),np.transpose(A_c)]]) 
         VanLoanMatrix = scipy.linalg.expm(exponent * dt) 
 
-        A_d = np.transpose(VanLoanMatrix[15:,15:])
-        GQGT_d = VanLoanMatrix[:15,15:]
+        A_d = VanLoanMatrix[15:, 15:].T
+        GQGT_d = A_d @ VanLoanMatrix[:15, 15:]
 
 
         return A_d, GQGT_d
@@ -217,7 +217,7 @@ class ModelIMU:
         Ad, GQGTd = self.get_discrete_error_diff(x_est_prev_nom,z_corr,dt) 
         x_pred_err = Ad @ x_est_prev_err.mean
         AdT = np.transpose(Ad)
-        P_pred = Ad @ x_est_prev_err.cov @ AdT + AdT @ GQGTd
+        P_pred = Ad @ x_est_prev_err.cov @ Ad.T + GQGTd
         x_err_pred = MultiVarGauss(x_pred_err, P_pred)
         
         return x_err_pred
