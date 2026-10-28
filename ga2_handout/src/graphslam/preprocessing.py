@@ -81,8 +81,16 @@ def preintegrate(
     np.ndarray, shape=(3, 3)
         Its covariance.
     """
-    # TODO(b): compound the increments and propagate the covariance.
-    raise NotImplementedError("Task 1 (b)")
+    
+    compound_pose  = gtsam.Pose2()
+    cov  = np.zeros((3,3))
+    H1 = np.zeros((3, 3), order="F")
+    H2 = np.zeros((3, 3), order="F")
+    for pose, cov_i in zip(poses, covariances):
+        compound_pose = new_pose.compose(pose, H1, H2)
+        cov  = H1@cov@H1.T + H2@cov_i@H2.T
+
+    return compound_pose, cov 
 
 
 # ---------------------------------------------------------------------------
