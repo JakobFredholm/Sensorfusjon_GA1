@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import gtsam
+from scipy.linalg import block_diag
 import numpy as np
 
 from graphslam.config import SlamConfig
@@ -151,8 +152,24 @@ def predict_measurement(
     H_landmark : np.ndarray, shape=(2, 2)
         d z / d m_j.
     """
-    # TODO(d): predict [range, bearing] and stack the two rows of each Jacobian.
-    raise NotImplementedError("Task 1 (d)")
+    # measurement prediction
+    z= np.zeros(2)
+    diff = landmark - [pose.x(), pose.y()]
+    z[0] = np.linalg.norm(diff)
+    z[1] = np.arctan2(diff[1], diff[0]) - pose.theta()
+
+    H_range_pose = np.zeros((1, 3), order="F")
+    H_bearing_pose = np.zeros((1, 3), order="F")
+    H_range_landmark = np.zeros((1, 2), order="F")
+    H_bearing_landmark = np.zeros((1, 2), order="F")
+    pose.range(landmark, H_range_pose, H_range_landmark)
+    pose.bearing(landmark, H_bearing_pose, H_bearing_landmark)
+    
+    # assemble
+    H_pose = np.vstack((H_range_pose, H_bearing_pose))
+    H_landmark = np.vstack((H_range_landmark, H_bearing_landmark))
+
+    return (z,H_pose,H_landmark)
 
 
 def inverse_measurement(pose: gtsam.Pose2, measurement: np.ndarray) -> np.ndarray:
@@ -199,8 +216,9 @@ def assemble_joint_covariance(
     np.ndarray, shape=(3 + 2n, 3 + 2n)
         P, whose block (i, j) is the covariance between ``keys[i]`` and ``keys[j]``.
     """
-    # TODO(e): fill P block by block from joint_marginal.at(key_i, key_j).
-    raise NotImplementedError("Task 1 (e)")
+    marginals = [[joint_marginal.at(key_i,key_j) for key_j in keys] for key_i in keys]
+    P = np.block(marginals)
+    return P
 
 
 # ---------------------------------------------------------------------------
@@ -233,8 +251,21 @@ def innovation_covariance(
     np.ndarray, shape=(2n, 2n)
         The innovation covariance ``S``.
     """
-    # TODO(f): build the stacked H, build the block-diagonal R, and form S.
-    raise NotImplementedError("Task 1 (f)")
+    n = len(jacobians_pose)
+
+    pose_part = np.array([])
+    if n == 0:
+        return np.zeros((0,0))
+
+    pose_part = np.vstack(jacobians_pose)
+    landmark_part = np.array(block_diag(*jacobians_landmark)) # unpack list to give args one by one to block_diag
+
+    H = np.hstack([pose_part, landmark_part])
+
+    n = len(jacobians_pose)
+    R = np.kron(np.eye(n),measurement_cov)
+
+    return H @ joint_covariance @ H.T + R
 
 
 # ---------------------------------------------------------------------------
