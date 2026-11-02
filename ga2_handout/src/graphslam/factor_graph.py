@@ -188,7 +188,12 @@ def inverse_measurement(pose: gtsam.Pose2, measurement: np.ndarray) -> np.ndarra
         Landmark position in the world frame.
     """
     # TODO(g): rotate by the bearing, translate by the range, map to the world frame.
-    raise NotImplementedError("Task 1 (g)")
+    range = measurement[0]
+    bearing = measurement[1]
+    point_body = gtsam.Rot2(bearing).rotate(gtsam.Point2(range, 0.0))
+    point_world = pose.transformFrom(point_body)
+    #raise NotImplementedError("Task 1 (g)")
+    return point_world
 
 
 # ---------------------------------------------------------------------------
