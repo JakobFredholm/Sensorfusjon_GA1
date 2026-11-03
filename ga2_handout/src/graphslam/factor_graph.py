@@ -156,7 +156,8 @@ def predict_measurement(
     z= np.zeros(2)
     diff = landmark - [pose.x(), pose.y()]
     z[0] = np.linalg.norm(diff)
-    z[1] = np.arctan2(diff[1], diff[0]) - pose.theta()
+    bearing = np.arctan2(diff[1], diff[0]) - pose.theta()
+    z[1] = (bearing + np.pi) % (2 * np.pi) - np.pi
 
     H_range_pose = np.zeros((1, 3), order="F")
     H_bearing_pose = np.zeros((1, 3), order="F")
