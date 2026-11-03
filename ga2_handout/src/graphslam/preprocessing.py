@@ -93,7 +93,7 @@ def preintegrate(
     H1 = np.zeros((3, 3), order="F")
     H2 = np.zeros((3, 3), order="F")
     for pose, cov_i in zip(poses, covariances):
-        compound_pose = new_pose.compose(pose, H1, H2)
+        compound_pose = compound_pose.compose(pose, H1, H2)
         cov  = H1@cov@H1.T + H2@cov_i@H2.T
 
     return compound_pose, cov 
